@@ -1,0 +1,107 @@
+---
+title: "Effet of Missing Data in Analysis"
+author: "Qi Er (Emma) Teng"
+thanks: "Code is available at https://github.com/dwz92/Effect-of-Missing-Data-in-Analysis"
+abstract: "This essay studies the impact of Missing data on statistical inference, employing simulations to investigate how different data handling strategies affect analysis outcomes. In the different types of missingness, we will focus on Missing Completely at Random, and evaluate the imputed value with the actual data. Our results will underscore the significant influence of missing data. This essay concludes methods for managing MCAR data, emphasizing the importance of method selection to ensure reliable statistical analysis in the presence of incomplete data."
+date: today
+date-format: long
+format: pdf
+toc: true
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+#| echo: false
+
+## WORKPLACE SETUP ##
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(knitr)
+library(palmerpenguins)
+```
+
+
+# Introduction
+In this study, we delve into the effects of Missing data within the context of statistical analysis, which is a common challenge in research that can skew results if not properly addressed. We will focus on studying Missing Completely at Random (MCAR) data for our investigation. By using the `palmerpenguins` dataset [@citepalmer] as a foundation for simulation, we will artificially introducing MCAR conditions into the `penguins` dataset. We aim to explore the resultant biases and explore data handling techniques. This controlled examination seeks to illuminate the impact of MCAR data on common analytical processes, providing insights into the potential distortions in statistical conclusions. Through comparative analysis, this essay offers evidence-based recommendations for addressing MCAR data, enhance understanding of MCAR's implications and aid in the development of robust analytical practices for dealing with incomplete datasets.
+
+# Simulating Missing Data
+In this section, we will simulate MCAR data to create a dataset of intended misses using R [@citeR], the `palmerpenguins` dataset [@citepalmer] and R libraries of dplyr [@citedplyr], and tidyverse [@citetidyverse].
+
+We will start with cleaning the original dataset.
+```{R}
+penguin_bill_len <- penguins
+
+glimpse(penguin_bill_len)
+
+penguin_bill_len <- penguin_bill_len |>
+  select("island", "bill_length_mm")
+
+head(penguin_bill_len)
+```
+
+We are now interested in the key summary statistics of the cleaned dataset.
+```{r}
+summary(penguin_bill_len)
+```
+
+We will now create several dataset that are missing islands completely at random. However, we will ensure rows with null `bill_length_mm` are removed so mean can be calculated successfully.
+```{r}
+sample_means <- tibble(seed = c(), mean = c(), islands_ignored = c())
+
+unique(penguin_bill_len$island)
+
+for (i in c(3:5)) {
+  set.seed(i)
+  dont_get <- c(sample(x = unique(penguin_bill_len$island), size = 1))
+  sample_means <-
+    sample_means |>
+    rbind(tibble(
+      seed = i,
+      mean =
+        penguin_bill_len |>
+          filter(!island %in% dont_get) |>
+          summarise(mean = mean(bill_length_mm, na.rm = TRUE)) |>
+          pull(),
+      islands_ignored = str_c(dont_get, collapse = ", ")
+    ))
+}
+
+sample_means |>
+  kable(
+    col.names = c("Seed", "Mean", "Ignored Islands"),
+    digits = 2,
+    format.args = list(big.mark = ","),
+    booktabs = TRUE
+  )
+```
+
+
+# Understanding Missing Data
+From the previous section, it is intuitive to notice the lack of significant difference in imputed mean compared to actual mean. This occurrence is normal considering we are simulating a Missing Completely at Random (MCAR) data. Per the definition of MCAR, the observations of a dataset are missing independently of any other variables. Therefore, it has least impact on summary statistics and inference within the three types of Missing data.
+
+Another factor to consider for the lack of difference in comparative analysis is that `island` has little influence on `bill_length_mm`. In the context of our dataset, geographical value has little influence on the bill length of the penguins.
+
+# Handling Missing Data
+A straightforward way to handle MCAR data is through imputation methods. Due to the nature of MCAR, the missing data can be replaced with the mean, median, or mode of the observed values of that variable. Although this method is straightforward, it can underestimate variability and affect the distribution of the data.
+
+Thus, we can implement multiple imputation to handle these concerns. By generating several imputed datasets separately and combine the results through averaging, we are able to implement multiple imputation. MOreove, multiple imputation accounts for the uncertainty of the imputed values, as it can provide more accurate standard errors and confidence intervals.
+
+# Conclusion
+Our study on the Missing Completely at Random (MCAR) data within the `palmerpenguins` dataset underscores that MCAR has a negligible effect on statistical analyses, maintaining the validity of results even with data missing at random. The efficiency of imputation methods, especially multiple imputation, is a robust solution for handling MCAR, allowing for accurate and reliable research outcomes. This investigation reinforces the importance of appropriate data handling techniques to counteract the challenges posed by incomplete datasets in statistical research.
+
+\newpage
+
+\appendix
+
+# Appendix {-}
+
+## Feedback {#sec-appendix}
+Yuanyi (Leo) Liu provided the following feedback for the initial draft of this paper: "MAR data are missing at random, which means they are missing from the dataset in a way that is related to other variables in the dataset. Your simulations follow MCAR, which randomly misses from the dataset."
+
+\newpage
+
+# References
